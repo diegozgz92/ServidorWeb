@@ -10,9 +10,12 @@ import java.util.Scanner;
 public class WebServer {
 
     private static final int port = 9090;
-    private static final String root = "C:\\Users\\diego\\Documents\\UNIVERSIDAD\\4º\\Sistemas y Tecnologias Web\\Practicas\\Practica1\\ServidorWeb\\WEB-INF";
+    private static String root;
+    private static String rootWeb;
 
     public static void main(String args[]) throws UnknownHostException, IOException {
+        root = new File( "." ).getCanonicalPath();
+        rootWeb = new File( "stw" ).getCanonicalPath();
         byte[] buffer = new byte[1024]; int bytes;
         ServerSocket servidor = new ServerSocket(port);
         while(true) {
@@ -29,19 +32,17 @@ public class WebServer {
     private static void gestionarPeticion(Socket cliente) throws IOException {
         System.setProperty("line.separator","\r\n");
         Scanner lee = new Scanner (cliente.getInputStream());
-        System.out.println(lee.nextLine());
+        String peticion = lee.nextLine();
+        lee = new Scanner(peticion);
+        System.out.println(peticion);
         String respuesta = null;
         String html = null;
         if(lee.next().equalsIgnoreCase("GET")){
             String file = lee.next();
-            if(file.equals("/")){
-                file = root + "\\index.html";
-            } else{
-                file = root + "\\" + file.substring(1);
-            }
+            file = file.substring(1);
             File fichero = new File(file);
-            String absolut = fichero.getAbsolutePath();
-            if (fichero.exists() && absolut.equals(file) && lee.next().equalsIgnoreCase("HTTP/1.0") && lee.hasNextLine()) {
+            String canonical = fichero.getCanonicalPath();
+            if (fichero.exists() && canonical.startsWith(rootWeb) && lee.next().equalsIgnoreCase("HTTP/1.1")) {
                 try {
                     PrintWriter envia = new PrintWriter(cliente.getOutputStream(),true);
                     envia.println("HTTP/1.0 200 OK");
@@ -57,7 +58,7 @@ public class WebServer {
             } else if(!fichero.exists()){
                 respuesta = "HTTP/1.0 404 Not Found";
                 html = "<html><body><h1>404 Not Found</h1></body></html>";
-            } else if(absolut.equals(file)){
+            } else if(canonical.equals(file)){
                 respuesta = "HTTP/1.0 401 Unauthorized";
                 html = "<html><body><h1>401 Unauthorized</h1></body></html>";
             }
@@ -80,6 +81,11 @@ public class WebServer {
                 e.printStackTrace();
             }
         }
+        try {
+            cliente.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private static void enviarFichero(String file, Socket cliente) {
@@ -94,12 +100,6 @@ public class WebServer {
             }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        try {
-            cliente.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
